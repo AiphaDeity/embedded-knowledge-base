@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitepress'
 
+// 站点挂在自定义域根目录（kb.aiphadeity.cn）时 base 为 '/'；仍部署在 GitHub Pages
+// 子路径时由 VITEPRESS_BASE 注入 '/embedded-knowledge-base/'。
+const siteBase = process.env.VITEPRESS_BASE ?? '/'
+const assetBase = siteBase.endsWith('/') ? siteBase : `${siteBase}/`
+
 const topics = [
   ['知识重构', 'review'],
   ['计算机基础知识', 'computing'],
@@ -19,7 +24,7 @@ export default defineConfig({
   lang: 'zh-CN',
   title: '嵌入式开发知识库',
   description: '按技术主题查学习笔记，按项目回看经验。',
-  base: '/embedded-knowledge-base/',
+  base: siteBase,
   markdown: {
     math: true,
     image: { lazyLoading: true },
@@ -27,10 +32,16 @@ export default defineConfig({
       const render = md.renderer.render.bind(md.renderer)
       md.renderer.render = (tokens, options, env) => {
         const html = render(tokens, options, env)
+        // 正文里写死的 /feishu-assets/ 和 /embedded-knowledge-base/feishu-assets/ 统一按 base 重写，
+        // 换部署根路径后图片、大图链接和附件不会 404。
+        const withAssets = html.replace(
+          /(href|src)="\/(?:embedded-knowledge-base\/)?feishu-assets\//g,
+          `$1="${assetBase}feishu-assets/`,
+        )
         // Imported expressions are document text. Keep brace pairs out of Vue's template parser.
         return env.relativePath?.split('/').includes('source')
-          ? html.replaceAll('{{', '&#123;&#123;')
-          : html
+          ? withAssets.replaceAll('{{', '&#123;&#123;')
+          : withAssets
       }
     },
   },
